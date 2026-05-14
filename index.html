@@ -193,12 +193,26 @@
     box-shadow:0 0 0 4px rgba(79,124,255,.1), 0 8px 24px rgba(31,36,48,.05);
   }
 
+  .image-block.dragging {
+    opacity:.45;
+  }
+
+  .image-block.drag-over {
+    border-color:rgba(32,164,100,.75);
+    box-shadow:0 0 0 4px rgba(32,164,100,.12), 0 8px 24px rgba(31,36,48,.05);
+  }
+
   .image-block-header {
     display:flex;
     justify-content:space-between;
-    align-items:center;
+    align-items:flex-start;
     gap:10px;
     margin-bottom:12px;
+  }
+
+  .image-block-header .btn-row {
+    justify-content:flex-end;
+    max-width:245px;
   }
 
   .image-title {
@@ -668,6 +682,47 @@ function renumberBlocks() {
   });
 }
 
+let draggedBlock = null;
+
+function handleBlockDragStart(e) {
+  draggedBlock = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleBlockDragOver(e) {
+  e.preventDefault();
+  if (!draggedBlock || draggedBlock === this) return;
+  this.classList.add('drag-over');
+}
+
+function handleBlockDrop(e) {
+  e.preventDefault();
+  if (!draggedBlock || draggedBlock === this) return;
+
+  const container = document.getElementById('imgContainer');
+  const blocks = Array.from(container.querySelectorAll('.image-block'));
+  const fromIndex = blocks.indexOf(draggedBlock);
+  const toIndex = blocks.indexOf(this);
+
+  if (fromIndex < toIndex) {
+    container.insertBefore(draggedBlock, this.nextSibling);
+  } else {
+    container.insertBefore(draggedBlock, this);
+  }
+
+  renumberBlocks();
+  refreshLive();
+  toast('드래그로 이미지 순서가 변경되었습니다.');
+}
+
+function handleBlockDragEnd() {
+  document.querySelectorAll('.image-block').forEach(block => {
+    block.classList.remove('dragging', 'drag-over');
+  });
+  draggedBlock = null;
+}
+
 function addImageBlock(url = '') {
   imgCount += 1;
   areaCounts[imgCount] = 0;
@@ -676,14 +731,22 @@ function addImageBlock(url = '') {
   div.className = 'image-block';
   div.id = `imgBlock_${imgCount}`;
   div.dataset.index = imgCount;
+  div.draggable = true;
+  div.addEventListener('dragstart', handleBlockDragStart);
+  div.addEventListener('dragover', handleBlockDragOver);
+  div.addEventListener('drop', handleBlockDrop);
+  div.addEventListener('dragend', handleBlockDragEnd);
 
   div.innerHTML = `
     <div class="image-block-header">
-      <div class="image-title">이미지 ${imgCount}</div>
+      <div>
+        <div class="image-title">이미지 ${imgCount}</div>
+        <div class="hint" style="margin-top:3px;">위로/아래로 버튼 또는 박스 드래그로 순서 변경</div>
+      </div>
       <div class="btn-row">
-        <button class="btn secondary small" type="button" onclick="moveImageBlock(${imgCount}, -1)">▲</button>
-        <button class="btn secondary small" type="button" onclick="moveImageBlock(${imgCount}, 1)">▼</button>
-        <button class="btn secondary small" type="button" onclick="setActiveImage(${imgCount})">미리보기 선택</button>
+        <button class="btn secondary small" type="button" onclick="moveImageBlock(${imgCount}, -1)">위로</button>
+        <button class="btn secondary small" type="button" onclick="moveImageBlock(${imgCount}, 1)">아래로</button>
+        <button class="btn secondary small" type="button" onclick="setActiveImage(${imgCount})">미리보기</button>
         <button class="btn danger small" type="button" onclick="removeImageBlock(${imgCount})">삭제</button>
       </div>
     </div>
@@ -766,8 +829,7 @@ function removeImageBlock(index) {
 
   setActiveVisual();
   renumberBlocks();
-  generateHTML();
-  renderOverlayBoxes();
+  refreshLive();
 }
 
 function moveImageBlock(index, direction) {
@@ -783,8 +845,8 @@ function moveImageBlock(index, direction) {
   }
 
   renumberBlocks();
-  generateHTML();
-  toast('이미지 순서를 변경했습니다.');
+  refreshLive();
+  toast('이미지 순서가 바로 변경되었습니다.');
 }
 
 function handleImageUrlInput(index, url) {
@@ -1083,6 +1145,17 @@ function renderOverlayBoxes() {
 function getTargetAttr() {
   const target = document.getElementById('targetSelect').value || '_blank';
   return target;
+}
+
+function refreshLive() {
+  generateHTML();
+
+  const testFrame = document.getElementById('testFrame');
+  if (testFrame && testFrame.style.display === 'block') {
+    runInlineTest();
+  }
+
+  renderOverlayBoxes();
 }
 
 function generateHTML() {
