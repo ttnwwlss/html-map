@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ko">
 <head>
@@ -404,7 +403,6 @@
       <h1>이미지 링크 HTML 생성기</h1>
       <p class="desc">
         이미지를 쌓아 HTML 안내장을 만들고, 전체 이미지 또는 특정 영역에 링크를 연결할 수 있습니다.
-        결과 코드는 GitHub Pages에 올려도 바로 작동합니다.
       </p>
     </div>
 
@@ -427,26 +425,9 @@
             <input id="maxWidthInput" type="number" min="320" value="900" />
           </div>
           <div>
-            <div class="mini-label">이미지 설명 기본값</div>
-            <input id="altInput" type="text" placeholder="비워두어도 됩니다" value="" />
+            <div class="mini-label">최종 HTML 이미지 설명</div>
+            <input id="altInput" type="text" placeholder="교육안내" value="교육안내" />
           </div>
-        </div>
-      </div>
-
-      <div class="field" style="padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;">
-        <label>링크 주소 일괄 변경</label>
-        <div class="hint" style="margin-bottom:8px;">신청 링크나 다음 화면 주소가 바뀌었을 때 전체 링크를 한 번에 바꿀 수 있습니다. 기존 CY Learn 주소는 붙여넣는 순간 자동으로 새 주소로 변환됩니다.</div>
-        <div class="field" style="margin-bottom:8px;">
-          <div class="mini-label">기존 주소</div>
-          <input id="oldLinkInput" type="text" placeholder="예: https://old-link.com 또는 page1.html" />
-        </div>
-        <div class="field" style="margin-bottom:10px;">
-          <div class="mini-label">새 주소</div>
-          <input id="newLinkInput" type="text" placeholder="예: https://new-link.com 또는 page2.html" />
-        </div>
-        <div class="btn-row">
-          <button class="btn secondary small" type="button" onclick="replaceAllLinks()">전체 링크 변경하기</button>
-          <button class="btn secondary small" type="button" onclick="normalizeAllCylearnLinks()">이미 입력된 CY Learn 주소 변환</button>
         </div>
       </div>
 
@@ -857,12 +838,12 @@ function switchTab(mode) {
 }
 
 function normalizeCylearnUrl(value) {
-  const oldPrefix = 'http://cylearncontents.s3.ap-northeast-2.amazonaws.com/file/';
-  const oldPrefixHttps = 'https://cylearncontents.s3.ap-northeast-2.amazonaws.com/file/';
-  const newPrefix = 'https://cylearn.cylearn.co.kr/s3contents/file/';
+  const oldPrefixHttp = 'http://cylearncontents.s3.ap-northeast-2.amazonaws.com/';
+  const oldPrefixHttps = 'https://cylearncontents.s3.ap-northeast-2.amazonaws.com/';
+  const newPrefix = 'https://cylearn.cylearn.co.kr/s3contents/';
 
   return String(value || '')
-    .replaceAll(oldPrefix, newPrefix)
+    .replaceAll(oldPrefixHttp, newPrefix)
     .replaceAll(oldPrefixHttps, newPrefix);
 }
 
@@ -933,14 +914,14 @@ function replaceAllLinks() {
 function generateHTML() {
   const title = document.getElementById('titleInput').value.trim() || 'HTML 안내장';
   const maxWidth = Number(document.getElementById('maxWidthInput').value) || 900;
-  const defaultAlt = document.getElementById('altInput').value.trim();
+  const defaultAlt = document.getElementById('altInput').value.trim() || '교육안내';
 
   let bodyRows = '';
   let maps = '';
   let mapIndex = 1;
 
   document.querySelectorAll('.image-block').forEach(block => {
-    const url = block.querySelector('.img-url')?.value.trim();
+    const url = normalizeCylearnUrl(block.querySelector('.img-url')?.value.trim());
     if (!url) return;
 
     const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt || '';
