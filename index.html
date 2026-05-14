@@ -269,9 +269,18 @@
 
   .right-body {
     display:grid;
-    grid-template-rows:auto minmax(0, 1fr) minmax(230px, 36%);
+    grid-template-rows:auto minmax(0, 1fr);
     min-height:0;
     height:100%;
+  }
+
+  .work-split {
+    display:grid;
+    grid-template-columns:minmax(0, 1.2fr) minmax(360px, .8fr);
+    gap:14px;
+    min-height:0;
+    padding:14px 20px 20px;
+    overflow:hidden;
   }
 
   .tabs {
@@ -301,13 +310,13 @@
 
   .preview-area {
     min-height:0;
-    padding:14px 20px 20px;
     overflow:auto;
   }
 
   .preview-stage {
     width:100%;
-    min-height:360px;
+    height:100%;
+    min-height:520px;
     border:1px dashed #c9d2e3;
     border-radius:18px;
     background:
@@ -388,10 +397,12 @@
 
   .code-panel {
     min-height:0;
-    border-top:1px solid var(--line);
+    border:1px solid var(--line);
+    border-radius:16px;
     background:#fff;
     display:flex;
     flex-direction:column;
+    overflow:hidden;
   }
 
   .code-head {
@@ -409,12 +420,14 @@
     border:0;
     border-radius:0;
     box-shadow:none;
+    resize:none;
   }
 
   #testFrame {
     display:none;
     width:100%;
-    min-height:500px;
+    height:100%;
+    min-height:520px;
     border:1px solid #cfd7e6;
     border-radius:14px;
     background:#fff;
@@ -467,6 +480,10 @@
     }
     .panel { min-height:auto; }
     .right-body { height:900px; }
+    .work-split {
+      grid-template-columns:1fr;
+      overflow:auto;
+    }
   }
 </style>
 </head>
@@ -557,31 +574,33 @@
         <button id="tabTest" class="tab" type="button" onclick="switchTab('test')">완성본 테스트</button>
       </div>
 
-      <div class="preview-area">
-        <div id="imageMode" class="preview-stage">
-          <div id="previewWrapper" class="preview-wrapper">
-            <img id="previewImg" alt="미리보기" draggable="false" />
-            <div id="overlayLayer"></div>
-            <div id="selectionBox"></div>
+      <div class="work-split">
+        <div class="preview-area">
+          <div id="imageMode" class="preview-stage">
+            <div id="previewWrapper" class="preview-wrapper">
+              <img id="previewImg" alt="미리보기" draggable="false" />
+              <div id="overlayLayer"></div>
+              <div id="selectionBox"></div>
+            </div>
+            <div id="previewPlaceholder" class="placeholder">
+              왼쪽에서 이미지 URL을 입력하거나<br />
+              “미리보기 선택”을 누르면 이곳에 표시됩니다.
+            </div>
           </div>
-          <div id="previewPlaceholder" class="placeholder">
-            왼쪽에서 이미지 URL을 입력하거나<br />
-            “미리보기 선택”을 누르면 이곳에 표시됩니다.
-          </div>
+
+          <iframe id="testFrame" title="완성본 테스트"></iframe>
         </div>
 
-        <iframe id="testFrame" title="완성본 테스트"></iframe>
-      </div>
-
-      <div class="code-panel">
-        <div class="code-head">
-          <h3>HTML 코드 결과</h3>
-          <div class="btn-row">
-            <button class="btn secondary small" type="button" onclick="copyCode()">복사</button>
-            <button class="btn secondary small" type="button" onclick="runInlineTest()">테스트 반영</button>
+        <div class="code-panel">
+          <div class="code-head">
+            <h3>HTML 코드 결과</h3>
+            <div class="btn-row">
+              <button class="btn secondary small" type="button" onclick="copyCode()">복사</button>
+              <button class="btn secondary small" type="button" onclick="runInlineTest()">테스트 반영</button>
+            </div>
           </div>
+          <textarea id="output" spellcheck="false" placeholder="HTML 코드 생성 버튼을 누르면 여기에 결과가 표시됩니다."></textarea>
         </div>
-        <textarea id="output" spellcheck="false" placeholder="HTML 코드 생성 버튼을 누르면 여기에 결과가 표시됩니다."></textarea>
       </div>
     </div>
   </section>
@@ -794,6 +813,21 @@ function addImageBlock(url = '') {
   return div;
 }
 
+function isEmptyImageBlock(block) {
+  if (!block) return false;
+
+  const imgUrl = block.querySelector('.img-url')?.value.trim();
+  const fullLink = block.querySelector('.full-link-input')?.value.trim();
+  const hasAreaValue = Array.from(block.querySelectorAll('.area-row')).some(row => {
+    const coords = row.querySelector('.coords-input')?.value.trim();
+    const link = row.querySelector('.link-input')?.value.trim();
+    const name = row.querySelector('.area-name-input')?.value.trim();
+    return coords || link || name;
+  });
+
+  return !imgUrl && !fullLink && !hasAreaValue;
+}
+
 function addBulkImages() {
   const text = document.getElementById('bulkUrlInput').value.trim();
   if (!text) {
@@ -811,9 +845,28 @@ function addBulkImages() {
     return;
   }
 
+  // 처음부터 여러 이미지를 넣을 때 기본으로 생성된 빈 이미지 칸은 자동으로 제거
+  document.querySelectorAll('.image-block').forEach(block => {
+    if (isEmptyImageBlock(block)) {
+      block.remove();
+    }
+  });
+
   urls.forEach(url => addImageBlock(url));
+
+  const firstBlock = document.querySelector('.image-block');
+  if (firstBlock) {
+    const firstIndex = Number(firstBlock.dataset.index);
+    if (firstIndex) {
+      activeIndex = firstIndex;
+      setActiveImage(firstIndex);
+    }
+  }
+
+  renumberBlocks();
+  refreshLive();
   document.getElementById('bulkUrlInput').value = '';
-  toast(`${urls.length}개의 이미지를 추가했습니다.`);
+  toast(`${urls.length}개의 이미지를 1번부터 추가했습니다.`);
 }
 
 function removeImageBlock(index) {
