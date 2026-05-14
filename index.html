@@ -36,7 +36,7 @@
 
   .app {
     display:grid;
-    grid-template-columns:minmax(390px, 460px) 1fr;
+    grid-template-columns:430px minmax(520px, 1fr) 430px;
     gap:18px;
     height:100vh;
     padding:18px;
@@ -274,10 +274,7 @@
     height:100%;
   }
 
-  .work-split {
-    display:grid;
-    grid-template-columns:minmax(0, 1.2fr) minmax(360px, .8fr);
-    gap:14px;
+  .preview-column {
     min-height:0;
     padding:14px 20px 20px;
     overflow:hidden;
@@ -309,6 +306,7 @@
   }
 
   .preview-area {
+    height:100%;
     min-height:0;
     overflow:auto;
   }
@@ -316,7 +314,7 @@
   .preview-stage {
     width:100%;
     height:100%;
-    min-height:520px;
+    min-height:640px;
     border:1px dashed #c9d2e3;
     border-radius:18px;
     background:
@@ -397,9 +395,11 @@
 
   .code-panel {
     min-height:0;
-    border:1px solid var(--line);
-    border-radius:16px;
-    background:#fff;
+    height:100%;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(255,255,255,.85);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
     display:flex;
     flex-direction:column;
     overflow:hidden;
@@ -412,6 +412,12 @@
     gap:8px;
     padding:12px 14px;
     border-bottom:1px solid var(--line);
+  }
+
+  .code-edit-tools {
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+    background:#fff;
   }
 
   #output {
@@ -472,18 +478,16 @@
     box-shadow:0 12px 28px rgba(0,0,0,.2);
   }
 
-  @media (max-width: 980px) {
+  @media (max-width: 1200px) {
     .app {
       grid-template-columns:1fr;
       height:auto;
       min-height:100vh;
     }
-    .panel { min-height:auto; }
+    .panel, .code-panel { min-height:auto; }
     .right-body { height:900px; }
-    .work-split {
-      grid-template-columns:1fr;
-      overflow:auto;
-    }
+    .preview-column { height:900px; }
+    .code-panel { height:620px; }
   }
 </style>
 </head>
@@ -553,7 +557,7 @@
 
   <section class="panel right">
     <div class="panel-header">
-      <h2>미리보기 · 테스트 · 코드</h2>
+      <h2>미리보기 · 테스트</h2>
       <p class="desc">
         왼쪽에서 이미지를 선택한 뒤 미리보기 위를 드래그하면 좌표가 자동 입력됩니다.
       </p>
@@ -561,11 +565,9 @@
 
     <div class="toolbar">
       <button class="btn" type="button" onclick="generateHTML()">HTML 코드 생성</button>
-      <button class="btn secondary" type="button" onclick="copyCode()">코드 복사</button>
       <button class="btn secondary" type="button" onclick="openTestWindow()">새 창 테스트</button>
       <button class="btn secondary" type="button" onclick="toggleOverlay()">클릭 영역 보기</button>
       <button class="btn secondary" type="button" onclick="runCheck()">저장 전 체크</button>
-      <button class="btn success" type="button" onclick="downloadFile()">HTML 파일 저장</button>
     </div>
 
     <div class="right-body">
@@ -574,7 +576,7 @@
         <button id="tabTest" class="tab" type="button" onclick="switchTab('test')">완성본 테스트</button>
       </div>
 
-      <div class="work-split">
+      <div class="preview-column">
         <div class="preview-area">
           <div id="imageMode" class="preview-stage">
             <div id="previewWrapper" class="preview-wrapper">
@@ -590,19 +592,41 @@
 
           <iframe id="testFrame" title="완성본 테스트"></iframe>
         </div>
-
-        <div class="code-panel">
-          <div class="code-head">
-            <h3>HTML 코드 결과</h3>
-            <div class="btn-row">
-              <button class="btn secondary small" type="button" onclick="copyCode()">복사</button>
-              <button class="btn secondary small" type="button" onclick="runInlineTest()">테스트 반영</button>
-            </div>
-          </div>
-          <textarea id="output" spellcheck="false" placeholder="HTML 코드 생성 버튼을 누르면 여기에 결과가 표시됩니다."></textarea>
-        </div>
       </div>
     </div>
+  </section>
+
+  <section class="code-panel">
+    <div class="panel-header">
+      <h2>HTML 코드 결과</h2>
+      <p class="desc">생성된 코드를 확인하고 복사하거나 HTML 파일로 저장할 수 있습니다.</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn secondary" type="button" onclick="copyCode()">코드 복사</button>
+      <button class="btn secondary" type="button" onclick="runInlineTest()">테스트 반영</button>
+      <button class="btn success" type="button" onclick="downloadFile()">HTML 파일 저장</button>
+    </div>
+
+    <div class="code-edit-tools">
+      <label>코드 내 문구 바꾸기</label>
+      <div class="grid-2">
+        <div>
+          <div class="mini-label">찾을 문구</div>
+          <input id="findTextInput" type="text" placeholder="예: 신청하기" />
+        </div>
+        <div>
+          <div class="mini-label">바꿀 문구</div>
+          <input id="replaceTextInput" type="text" placeholder="예: 접수하기" />
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn secondary small" type="button" onclick="replaceTextInCode()">코드 내 문구 바꾸기</button>
+        <button class="btn secondary small" type="button" onclick="runInlineTest()">수정 코드 테스트</button>
+      </div>
+      <div class="hint">이미지 안의 글자는 HTML에서 수정할 수 없고, 코드 안에 실제 텍스트로 들어간 문구와 링크만 수정됩니다.</div>
+    </div>
+
+    <textarea id="output" spellcheck="false" oninput="codeManuallyEdited = true" placeholder="HTML 코드를 직접 붙여넣거나 수정할 수 있습니다."></textarea>
   </section>
 </div>
 
@@ -618,6 +642,7 @@ let startY = 0;
 let scale = 1;
 let imgRect = null;
 let overlayVisible = false;
+let codeManuallyEdited = false;
 
 window.addEventListener('DOMContentLoaded', () => {
   addImageBlock();
@@ -773,11 +798,6 @@ function addImageBlock(url = '') {
     <div class="field">
       <label>이미지 URL</label>
       <input class="img-url" type="text" placeholder="https://..." value="${safeAttr(normalizeCylearnUrl(url))}" oninput="normalizeImageInput(this); handleImageUrlInput(${imgCount}, this.value)" onpaste="setTimeout(() => { normalizeImageInput(this); handleImageUrlInput(${imgCount}, this.value); }, 0)" />
-    </div>
-
-    <div class="field">
-      <label>이미지 설명</label>
-      <input class="img-alt" type="text" placeholder="비워두어도 됩니다" oninput="generateHTML()" />
     </div>
 
     <label class="check-line">
@@ -1225,7 +1245,7 @@ function generateHTML() {
     const url = normalizeCylearnUrl(block.querySelector('.img-url')?.value.trim());
     if (!url) return;
 
-    const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt || '교육안내';
+    const alt = defaultAlt || '교육안내';
     const fullLinkChecked = block.querySelector('.full-link-check')?.checked;
     const fullLink = normalizeCylearnUrl(block.querySelector('.full-link-input')?.value.trim());
     const hasFullLink = fullLinkChecked && fullLink;
@@ -1281,18 +1301,25 @@ ${maps}  </div>
 </body>
 </html>`;
 
-  document.getElementById('output').value = html;
+  const output = document.getElementById('output');
+  output.value = html;
+  codeManuallyEdited = false;
   return html;
 }
 
+function getCurrentCode() {
+  const output = document.getElementById('output');
+  return output.value.trim() ? output.value : generateHTML();
+}
+
 function runInlineTest() {
-  const html = generateHTML();
+  const html = getCurrentCode();
   const frame = document.getElementById('testFrame');
   frame.srcdoc = html;
 }
 
 function openTestWindow() {
-  const html = generateHTML();
+  const html = getCurrentCode();
   const win = window.open('', '_blank');
   if (!win) {
     toast('팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.');
@@ -1304,7 +1331,7 @@ function openTestWindow() {
 }
 
 async function copyCode() {
-  const html = generateHTML();
+  const html = getCurrentCode();
 
   try {
     await navigator.clipboard.writeText(html);
@@ -1316,6 +1343,34 @@ async function copyCode() {
     document.execCommand('copy');
     toast('HTML 코드가 복사되었습니다.');
   }
+}
+
+function replaceTextInCode() {
+  const findText = document.getElementById('findTextInput').value;
+  const replaceText = document.getElementById('replaceTextInput').value;
+  const output = document.getElementById('output');
+
+  if (!findText) {
+    toast('찾을 문구를 입력해주세요.');
+    return;
+  }
+
+  if (!output.value.trim()) {
+    generateHTML();
+  }
+
+  const before = output.value;
+  const after = before.split(findText).join(replaceText);
+
+  if (before === after) {
+    toast('일치하는 문구가 없습니다.');
+    return;
+  }
+
+  output.value = after;
+  codeManuallyEdited = true;
+  runInlineTest();
+  toast('코드 내 문구를 변경했습니다.');
 }
 
 function runCheck() {
@@ -1409,7 +1464,7 @@ function downloadFile() {
     if (!proceed) return;
   }
 
-  const html = generateHTML();
+  const html = codeManuallyEdited ? getCurrentCode() : generateHTML();
   const rawName = document.getElementById('fileNameInput').value;
   const fileName = makeSafeFileName(rawName);
 
