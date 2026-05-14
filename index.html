@@ -1,9 +1,10 @@
+
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>이미지 HTML맵 생성기</title>
+<title>이미지 링크 HTML 생성기</title>
 <style>
   :root {
     --bg:#f6f7fb;
@@ -400,9 +401,9 @@
 <div class="app">
   <section class="panel left">
     <div class="panel-header">
-      <h1>이미지 HTML맵 생성기</h1>
+      <h1>이미지 링크 HTML 생성기</h1>
       <p class="desc">
-        이미지를 쌓아 HTML 안내장을 만들고, 드래그로 클릭 영역을 지정할 수 있습니다.
+        이미지를 쌓아 HTML 안내장을 만들고, 전체 이미지 또는 특정 영역에 링크를 연결할 수 있습니다.
         결과 코드는 GitHub Pages에 올려도 바로 작동합니다.
       </p>
     </div>
@@ -426,9 +427,26 @@
             <input id="maxWidthInput" type="number" min="320" value="900" />
           </div>
           <div>
-            <div class="mini-label">이미지 alt 기본값</div>
-            <input id="altInput" type="text" placeholder="안내 이미지" value="안내 이미지" />
+            <div class="mini-label">이미지 설명 기본값</div>
+            <input id="altInput" type="text" placeholder="비워두어도 됩니다" value="" />
           </div>
+        </div>
+      </div>
+
+      <div class="field" style="padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;">
+        <label>링크 주소 일괄 변경</label>
+        <div class="hint" style="margin-bottom:8px;">신청 링크나 다음 화면 주소가 바뀌었을 때 전체 링크를 한 번에 바꿀 수 있습니다. 기존 CY Learn 주소는 붙여넣는 순간 자동으로 새 주소로 변환됩니다.</div>
+        <div class="field" style="margin-bottom:8px;">
+          <div class="mini-label">기존 주소</div>
+          <input id="oldLinkInput" type="text" placeholder="예: https://old-link.com 또는 page1.html" />
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <div class="mini-label">새 주소</div>
+          <input id="newLinkInput" type="text" placeholder="예: https://new-link.com 또는 page2.html" />
+        </div>
+        <div class="btn-row">
+          <button class="btn secondary small" type="button" onclick="replaceAllLinks()">전체 링크 변경하기</button>
+          <button class="btn secondary small" type="button" onclick="normalizeAllCylearnLinks()">이미 입력된 CY Learn 주소 변환</button>
         </div>
       </div>
 
@@ -561,24 +579,24 @@ function addImageBlock() {
     </div>
 
     <div class="field">
-      <label>이미지 설명 alt</label>
-      <input class="img-alt" type="text" placeholder="비워두면 기본 alt 사용" oninput="generateHTML()" />
+      <label>이미지 설명</label>
+      <input class="img-alt" type="text" placeholder="비워두어도 됩니다" oninput="generateHTML()" />
     </div>
 
     <label class="check-line">
       <input class="full-link-check" type="checkbox" onchange="toggleFullImageLink(${imgCount}, this.checked)" />
-      이미지 전체를 클릭 가능하게 만들기
+      이미지 전체를 클릭하면 이동하게 만들기
     </label>
 
     <div class="field full-link-field" style="display:none;">
-      <label>이미지 전체 클릭 링크</label>
-      <input class="full-link-input" type="text" placeholder="예: next.html 또는 https://..." oninput="generateHTML()" />
+      <label>이미지 전체 클릭 시 이동할 링크</label>
+      <input class="full-link-input" type="text" placeholder="예: next.html 또는 https://..." oninput="normalizeLinkInput(this)" onpaste="setTimeout(() => normalizeLinkInput(this), 0)" />
       <div class="hint">다음 화면으로 넘길 때는 next.html, page2.html 같은 상대경로도 사용할 수 있습니다.</div>
     </div>
 
     <label class="check-line map-option">
       <input class="map-check" type="checkbox" checked onchange="toggleMap(${imgCount}, this.checked)" />
-      이미지맵 사용하기
+      특정 영역만 클릭 가능하게 만들기
     </label>
 
     <div id="coordsArea_${imgCount}"></div>
@@ -706,11 +724,11 @@ function addAreaRow(index) {
     <div class="field">
       <label>coords</label>
       <input class="coords-input" type="text" placeholder="x1,y1,x2,y2" oninput="generateHTML()" />
-      <div class="hint">오른쪽 이미지에서 드래그하면 자동 입력됩니다.</div>
+      <div class="hint">오른쪽 이미지에서 클릭 영역을 드래그하면 자동 입력됩니다.</div>
     </div>
     <div class="field">
       <label>링크 URL</label>
-      <input class="link-input" type="text" placeholder="https://..." oninput="generateHTML()" />
+      <input class="link-input" type="text" placeholder="https://..." oninput="normalizeLinkInput(this)" onpaste="setTimeout(() => normalizeLinkInput(this), 0)" />
     </div>
   `;
 
@@ -838,10 +856,84 @@ function switchTab(mode) {
   }
 }
 
+function normalizeCylearnUrl(value) {
+  const oldPrefix = 'http://cylearncontents.s3.ap-northeast-2.amazonaws.com/file/';
+  const oldPrefixHttps = 'https://cylearncontents.s3.ap-northeast-2.amazonaws.com/file/';
+  const newPrefix = 'https://cylearn.cylearn.co.kr/s3contents/file/';
+
+  return String(value || '')
+    .replaceAll(oldPrefix, newPrefix)
+    .replaceAll(oldPrefixHttps, newPrefix);
+}
+
+function normalizeLinkInput(input) {
+  if (!input) return;
+  const before = input.value;
+  const after = normalizeCylearnUrl(before);
+
+  if (before !== after) {
+    input.value = after;
+    toast('CY Learn 주소가 자동 변환되었습니다.');
+  }
+
+  generateHTML();
+}
+
+function normalizeAllCylearnLinks() {
+  let changedCount = 0;
+
+  document.querySelectorAll('.link-input, .full-link-input').forEach(input => {
+    const before = input.value;
+    const after = normalizeCylearnUrl(before);
+
+    if (before !== after) {
+      input.value = after;
+      changedCount += 1;
+    }
+  });
+
+  generateHTML();
+
+  if (changedCount > 0) {
+    toast(`${changedCount}개의 CY Learn 주소를 변환했습니다.`);
+  } else {
+    toast('변환할 CY Learn 주소가 없습니다.');
+  }
+}
+
+function replaceAllLinks() {
+  const oldValue = document.getElementById('oldLinkInput').value.trim();
+  const newValue = document.getElementById('newLinkInput').value.trim();
+
+  if (!oldValue || !newValue) {
+    toast('기존 주소와 새 주소를 모두 입력해주세요.');
+    return;
+  }
+
+  let changedCount = 0;
+
+  document.querySelectorAll('.link-input, .full-link-input').forEach(input => {
+    if (!input.value) return;
+
+    if (input.value.includes(oldValue)) {
+      input.value = input.value.replaceAll(oldValue, newValue);
+      changedCount += 1;
+    }
+  });
+
+  generateHTML();
+
+  if (changedCount > 0) {
+    toast(`${changedCount}개의 링크를 변경했습니다.`);
+  } else {
+    toast('일치하는 기존 주소가 없습니다.');
+  }
+}
+
 function generateHTML() {
   const title = document.getElementById('titleInput').value.trim() || 'HTML 안내장';
   const maxWidth = Number(document.getElementById('maxWidthInput').value) || 900;
-  const defaultAlt = document.getElementById('altInput').value.trim() || '안내 이미지';
+  const defaultAlt = document.getElementById('altInput').value.trim();
 
   let bodyRows = '';
   let maps = '';
@@ -851,9 +943,9 @@ function generateHTML() {
     const url = block.querySelector('.img-url')?.value.trim();
     if (!url) return;
 
-    const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt;
+    const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt || '';
     const fullLinkChecked = block.querySelector('.full-link-check')?.checked;
-    const fullLink = block.querySelector('.full-link-input')?.value.trim();
+    const fullLink = normalizeCylearnUrl(block.querySelector('.full-link-input')?.value.trim());
     const hasFullLink = fullLinkChecked && fullLink;
     const useMap = !hasFullLink && block.querySelector('.map-check')?.checked;
     const mapName = `map_${mapIndex}`;
@@ -874,7 +966,7 @@ function generateHTML() {
       let areaTags = '';
       block.querySelectorAll('.area-row').forEach(row => {
         const coords = row.querySelector('.coords-input')?.value.trim();
-        const link = row.querySelector('.link-input')?.value.trim();
+        const link = normalizeCylearnUrl(row.querySelector('.link-input')?.value.trim());
 
         if (coords && link) {
           areaTags += `  <area shape="rect" coords="${safeAttr(coords)}" href="${safeAttr(link)}" target="_blank" alt="">\n`;
