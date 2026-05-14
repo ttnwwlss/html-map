@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>이미지 HTML맵 생성기</title>
+<style>
+  :root {
+    --bg:#f6f7fb;
+    --panel:#ffffff;
+    --text:#1f2430;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+    --primary:#4f7cff;
+    --primary-dark:#315bd6;
+    --soft:#edf2ff;
+    --green:#20a464;
+    --green-dark:#16804d;
+    --danger:#ef4444;
+    --shadow:0 18px 45px rgba(31,36,48,.09);
+    --radius:18px;
+  }
+
+  * { box-sizing:border-box; }
+
+  body {
+    margin:0;
+    min-height:100vh;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans KR",sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(circle at top left, rgba(79,124,255,.18), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(255,214,102,.26), transparent 34%),
+      var(--bg);
+  }
+
+  .app {
+    display:grid;
+    grid-template-columns:minmax(390px, 450px) 1fr;
+    gap:18px;
+    height:100vh;
+    padding:18px;
+  }
+
+  .panel {
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(255,255,255,.85);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+
+  .panel-header {
+    padding:18px 20px 14px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#fff,rgba(255,255,255,.78));
+  }
+
+  h1,h2,h3 { margin:0; line-height:1.25; }
+  h1 { font-size:21px; letter-spacing:-.03em; }
+  h2 { font-size:16px; letter-spacing:-.02em; }
+  h3 { font-size:14px; }
+
+  .desc {
+    margin-top:7px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.55;
+  }
+
+  .content {
+    padding:18px 20px;
+    overflow:auto;
+  }
+
+  .field { margin-bottom:14px; }
+
+  label {
+    display:block;
+    margin-bottom:6px;
+    color:#374151;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  input[type="text"], input[type="number"], textarea {
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#fff;
+    color:var(--text);
+    padding:10px 12px;
+    font-size:13px;
+    outline:none;
+    transition:border .15s ease, box-shadow .15s ease;
+  }
+
+  input:focus, textarea:focus {
+    border-color:rgba(79,124,255,.75);
+    box-shadow:0 0 0 4px rgba(79,124,255,.12);
+  }
+
+  textarea {
+    min-height:230px;
+    resize:vertical;
+    line-height:1.55;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  }
+
+  .hint {
+    margin-top:6px;
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.5;
+  }
+
+  .btn {
+    border:0;
+    border-radius:999px;
+    padding:9px 13px;
+    font-size:13px;
+    font-weight:900;
+    cursor:pointer;
+    color:#fff;
+    background:var(--primary);
+    box-shadow:0 8px 20px rgba(79,124,255,.22);
+    transition:transform .12s ease, background .12s ease;
+    white-space:nowrap;
+  }
+
+  .btn:hover { transform:translateY(-1px); background:var(--primary-dark); }
+  .btn:active { transform:translateY(0); }
+
+  .btn.secondary {
+    color:#273142;
+    background:#eef1f6;
+    box-shadow:none;
+  }
+  .btn.secondary:hover { background:#dfe5ee; }
+
+  .btn.success {
+    background:var(--green);
+    box-shadow:0 8px 20px rgba(32,164,100,.2);
+  }
+  .btn.success:hover { background:var(--green-dark); }
+
+  .btn.danger {
+    color:#dc2626;
+    background:#fff1f1;
+    box-shadow:none;
+  }
+  .btn.danger:hover { background:#ffe0e0; }
+
+  .btn.small { padding:7px 10px; font-size:12px; }
+
+  .btn-row {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+
+  .toolbar {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:14px 20px;
+    border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,.62);
+  }
+
+  .image-block {
+    margin-bottom:14px;
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 8px 24px rgba(31,36,48,.05);
+  }
+
+  .image-block.active {
+    border-color:rgba(79,124,255,.65);
+    box-shadow:0 0 0 4px rgba(79,124,255,.1), 0 8px 24px rgba(31,36,48,.05);
+  }
+
+  .image-block-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+
+  .image-title {
+    font-weight:950;
+    letter-spacing:-.02em;
+  }
+
+  .check-line {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:8px 0 10px;
+    color:#3f4654;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  .check-line input { width:16px; height:16px; }
+
+  .area-row {
+    margin-top:10px;
+    padding:11px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#f8f9fc;
+  }
+
+  .area-top {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+  }
+
+  .area-title {
+    color:#4b5563;
+    font-size:12px;
+    font-weight:950;
+  }
+
+  .grid-2 {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .mini-label {
+    margin-bottom:4px;
+    color:var(--muted);
+    font-size:11px;
+    font-weight:900;
+  }
+
+  .right-body {
+    display:grid;
+    grid-template-rows:auto minmax(0, 1fr) minmax(230px, 36%);
+    min-height:0;
+    height:100%;
+  }
+
+  .tabs {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:14px 20px 0;
+    background:rgba(255,255,255,.62);
+  }
+
+  .tab {
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:#fff;
+    color:#3f4654;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:950;
+    cursor:pointer;
+  }
+
+  .tab.active {
+    border-color:var(--primary);
+    background:var(--primary);
+    color:#fff;
+  }
+
+  .preview-area {
+    min-height:0;
+    padding:14px 20px 20px;
+    overflow:auto;
+  }
+
+  .preview-stage {
+    width:100%;
+    min-height:360px;
+    border:1px dashed #c9d2e3;
+    border-radius:18px;
+    background:
+      linear-gradient(45deg, #fafbff 25%, transparent 25%),
+      linear-gradient(-45deg, #fafbff 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #fafbff 75%),
+      linear-gradient(-45deg, transparent 75%, #fafbff 75%);
+    background-size:24px 24px;
+    background-position:0 0,0 12px,12px -12px,-12px 0;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    overflow:auto;
+    padding:18px;
+  }
+
+  .preview-wrapper {
+    position:relative;
+    display:inline-block;
+    max-width:100%;
+  }
+
+  #previewImg {
+    display:none;
+    max-width:min(100%, 900px);
+    border:1px solid #cfd7e6;
+    border-radius:12px;
+    user-select:none;
+    -webkit-user-drag:none;
+    box-shadow:0 10px 30px rgba(31,36,48,.12);
+  }
+
+  #selectionBox {
+    position:absolute;
+    display:none;
+    pointer-events:none;
+    border:2px dashed #ff4747;
+    background:rgba(255,71,71,.15);
+  }
+
+  .placeholder {
+    margin:auto;
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    line-height:1.7;
+  }
+
+  .code-panel {
+    min-height:0;
+    border-top:1px solid var(--line);
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .code-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+  }
+
+  #output {
+    min-height:0;
+    height:100%;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+  }
+
+  #testFrame {
+    display:none;
+    width:100%;
+    min-height:500px;
+    border:1px solid #cfd7e6;
+    border-radius:14px;
+    background:#fff;
+  }
+
+  .toast {
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%);
+    z-index:20;
+    display:none;
+    padding:10px 14px;
+    border-radius:999px;
+    background:#111827;
+    color:#fff;
+    font-size:13px;
+    font-weight:800;
+    box-shadow:0 12px 28px rgba(0,0,0,.2);
+  }
+
+  @media (max-width: 980px) {
+    .app {
+      grid-template-columns:1fr;
+      height:auto;
+      min-height:100vh;
+    }
+    .panel { min-height:auto; }
+    .right-body { height:900px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="panel left">
+    <div class="panel-header">
+      <h1>이미지 HTML맵 생성기</h1>
+      <p class="desc">
+        이미지를 쌓아 HTML 안내장을 만들고, 드래그로 클릭 영역을 지정할 수 있습니다.
+        결과 코드는 GitHub Pages에 올려도 바로 작동합니다.
+      </p>
+    </div>
+
+    <div class="content">
+      <div class="field">
+        <label for="titleInput">페이지 타이틀</label>
+        <input id="titleInput" type="text" placeholder="예: 유라시아 청년 아카데미 안내장" />
+      </div>
+
+      <div class="field">
+        <label for="fileNameInput">저장 파일명</label>
+        <input id="fileNameInput" type="text" placeholder="예: index 또는 academy_invitation" value="index" />
+      </div>
+
+      <div class="field">
+        <label>기본 설정</label>
+        <div class="grid-2">
+          <div>
+            <div class="mini-label">본문 최대 너비(px)</div>
+            <input id="maxWidthInput" type="number" min="320" value="900" />
+          </div>
+          <div>
+            <div class="mini-label">이미지 alt 기본값</div>
+            <input id="altInput" type="text" placeholder="안내 이미지" value="안내 이미지" />
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-bottom:14px;">
+        <button class="btn" type="button" onclick="addImageBlock()">+ 이미지 추가</button>
+        <button class="btn secondary" type="button" onclick="generateHTML()">코드 새로고침</button>
+      </div>
+
+      <div id="imgContainer"></div>
+    </div>
+  </section>
+
+  <section class="panel right">
+    <div class="panel-header">
+      <h2>미리보기 · 테스트 · 코드</h2>
+      <p class="desc">
+        왼쪽에서 이미지를 선택한 뒤 미리보기 위를 드래그하면 좌표가 자동 입력됩니다.
+      </p>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn" type="button" onclick="generateHTML()">HTML 코드 생성</button>
+      <button class="btn secondary" type="button" onclick="copyCode()">코드 복사</button>
+      <button class="btn secondary" type="button" onclick="openTestWindow()">새 창 테스트</button>
+      <button class="btn success" type="button" onclick="downloadFile()">HTML 파일 저장</button>
+    </div>
+
+    <div class="right-body">
+      <div class="tabs">
+        <button id="tabImage" class="tab active" type="button" onclick="switchTab('image')">이미지 좌표 선택</button>
+        <button id="tabTest" class="tab" type="button" onclick="switchTab('test')">완성본 테스트</button>
+      </div>
+
+      <div class="preview-area">
+        <div id="imageMode" class="preview-stage">
+          <div id="previewWrapper" class="preview-wrapper">
+            <img id="previewImg" alt="미리보기" draggable="false" />
+            <div id="selectionBox"></div>
+          </div>
+          <div id="previewPlaceholder" class="placeholder">
+            왼쪽에서 이미지 URL을 입력하거나<br />
+            “미리보기 선택”을 누르면 이곳에 표시됩니다.
+          </div>
+        </div>
+
+        <iframe id="testFrame" title="완성본 테스트"></iframe>
+      </div>
+
+      <div class="code-panel">
+        <div class="code-head">
+          <h3>HTML 코드 결과</h3>
+          <div class="btn-row">
+            <button class="btn secondary small" type="button" onclick="copyCode()">복사</button>
+            <button class="btn secondary small" type="button" onclick="runInlineTest()">테스트 반영</button>
+          </div>
+        </div>
+        <textarea id="output" spellcheck="false" placeholder="HTML 코드 생성 버튼을 누르면 여기에 결과가 표시됩니다."></textarea>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let imgCount = 0;
+let activeIndex = null;
+let areaCounts = {};
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let scale = 1;
+let imgRect = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  addImageBlock();
+  generateHTML();
+});
+
+function toast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.style.display = 'block';
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => { el.style.display = 'none'; }, 1700);
+}
+
+function escapeHTML(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function safeAttr(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
+function getBlock(index) {
+  return document.getElementById(`imgBlock_${index}`);
+}
+
+function addImageBlock() {
+  imgCount += 1;
+  areaCounts[imgCount] = 0;
+
+  const div = document.createElement('div');
+  div.className = 'image-block';
+  div.id = `imgBlock_${imgCount}`;
+  div.dataset.index = imgCount;
+
+  div.innerHTML = `
+    <div class="image-block-header">
+      <div class="image-title">이미지 ${imgCount}</div>
+      <div class="btn-row">
+        <button class="btn secondary small" type="button" onclick="setActiveImage(${imgCount})">미리보기 선택</button>
+        <button class="btn danger small" type="button" onclick="removeImageBlock(${imgCount})">삭제</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>이미지 URL</label>
+      <input class="img-url" type="text" placeholder="https://..." oninput="handleImageUrlInput(${imgCount}, this.value)" />
+      <div class="hint">GitHub에 이미지를 같이 올릴 경우 예: images/section01.png</div>
+    </div>
+
+    <div class="field">
+      <label>이미지 설명 alt</label>
+      <input class="img-alt" type="text" placeholder="비워두면 기본 alt 사용" oninput="generateHTML()" />
+    </div>
+
+    <label class="check-line">
+      <input class="full-link-check" type="checkbox" onchange="toggleFullImageLink(${imgCount}, this.checked)" />
+      이미지 전체를 클릭 가능하게 만들기
+    </label>
+
+    <div class="field full-link-field" style="display:none;">
+      <label>이미지 전체 클릭 링크</label>
+      <input class="full-link-input" type="text" placeholder="예: next.html 또는 https://..." oninput="generateHTML()" />
+      <div class="hint">다음 화면으로 넘길 때는 next.html, page2.html 같은 상대경로도 사용할 수 있습니다.</div>
+    </div>
+
+    <label class="check-line map-option">
+      <input class="map-check" type="checkbox" checked onchange="toggleMap(${imgCount}, this.checked)" />
+      이미지맵 사용하기
+    </label>
+
+    <div id="coordsArea_${imgCount}"></div>
+
+    <button class="btn secondary small" type="button" onclick="addAreaRow(${imgCount})">+ 링크 영역 추가</button>
+  `;
+
+  document.getElementById('imgContainer').appendChild(div);
+  addAreaRow(imgCount);
+
+  activeIndex = imgCount;
+  setActiveVisual();
+  generateHTML();
+}
+
+function removeImageBlock(index) {
+  const block = getBlock(index);
+  if (!block) return;
+  block.remove();
+
+  if (activeIndex === index) {
+    activeIndex = null;
+    document.getElementById('previewImg').style.display = 'none';
+    document.getElementById('previewPlaceholder').style.display = 'block';
+  }
+
+  setActiveVisual();
+  generateHTML();
+}
+
+function setActiveVisual() {
+  document.querySelectorAll('.image-block').forEach(block => {
+    block.classList.toggle('active', Number(block.dataset.index) === activeIndex);
+  });
+}
+
+function handleImageUrlInput(index, url) {
+  activeIndex = index;
+  setActiveVisual();
+  if (url.trim()) loadPreview(url.trim());
+  generateHTML();
+}
+
+function setActiveImage(index) {
+  activeIndex = index;
+  setActiveVisual();
+  const block = getBlock(index);
+  const input = block ? block.querySelector('.img-url') : null;
+  if (input && input.value.trim()) {
+    loadPreview(input.value.trim());
+  } else {
+    toast('이미지 URL을 먼저 입력해주세요.');
+  }
+}
+
+function toggleFullImageLink(index, checked) {
+  const block = getBlock(index);
+  if (!block) return;
+
+  const field = block.querySelector('.full-link-field');
+  const mapCheck = block.querySelector('.map-check');
+  const mapOption = block.querySelector('.map-option');
+  const coordsArea = document.getElementById(`coordsArea_${index}`);
+
+  if (field) field.style.display = checked ? 'block' : 'none';
+
+  // 전체 이미지 링크와 이미지맵은 동시에 적용하면 충돌할 수 있어 둘 중 하나만 사용하도록 처리
+  if (checked) {
+    if (mapCheck) mapCheck.checked = false;
+    if (mapOption) mapOption.style.opacity = '0.45';
+    if (coordsArea) coordsArea.style.display = 'none';
+  } else {
+    if (mapOption) mapOption.style.opacity = '1';
+  }
+
+  generateHTML();
+}
+
+function toggleMap(index, checked) {
+  const area = document.getElementById(`coordsArea_${index}`);
+  const block = getBlock(index);
+  if (!area || !block) return;
+
+  // 이미지맵을 켜면 전체 이미지 클릭 모드는 자동 해제
+  if (checked) {
+    const fullCheck = block.querySelector('.full-link-check');
+    const fullField = block.querySelector('.full-link-field');
+    const mapOption = block.querySelector('.map-option');
+
+    if (fullCheck) fullCheck.checked = false;
+    if (fullField) fullField.style.display = 'none';
+    if (mapOption) mapOption.style.opacity = '1';
+  }
+
+  if (checked && area.children.length === 0) addAreaRow(index);
+  area.style.display = checked ? 'block' : 'none';
+  generateHTML();
+}
+
+function addAreaRow(index) {
+  const area = document.getElementById(`coordsArea_${index}`);
+  if (!area) return;
+
+  const block = getBlock(index);
+  const check = block.querySelector('.map-check');
+  const fullCheck = block.querySelector('.full-link-check');
+  const fullField = block.querySelector('.full-link-field');
+  const mapOption = block.querySelector('.map-option');
+
+  if (check) check.checked = true;
+  if (fullCheck) fullCheck.checked = false;
+  if (fullField) fullField.style.display = 'none';
+  if (mapOption) mapOption.style.opacity = '1';
+
+  areaCounts[index] = (areaCounts[index] || 0) + 1;
+  const areaNo = areaCounts[index];
+
+  const row = document.createElement('div');
+  row.className = 'area-row';
+  row.innerHTML = `
+    <div class="area-top">
+      <div class="area-title">링크 영역 ${areaNo}</div>
+      <button class="btn danger small" type="button" onclick="this.closest('.area-row').remove(); generateHTML();">삭제</button>
+    </div>
+    <div class="field">
+      <label>coords</label>
+      <input class="coords-input" type="text" placeholder="x1,y1,x2,y2" oninput="generateHTML()" />
+      <div class="hint">오른쪽 이미지에서 드래그하면 자동 입력됩니다.</div>
+    </div>
+    <div class="field">
+      <label>링크 URL</label>
+      <input class="link-input" type="text" placeholder="https://..." oninput="generateHTML()" />
+    </div>
+  `;
+
+  area.appendChild(row);
+  generateHTML();
+}
+
+function loadPreview(url) {
+  const img = document.getElementById('previewImg');
+  const placeholder = document.getElementById('previewPlaceholder');
+
+  img.style.display = 'none';
+  placeholder.style.display = 'block';
+
+  img.onload = () => {
+    imgRect = img.getBoundingClientRect();
+    scale = img.naturalWidth / imgRect.width;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    switchTab('image');
+  };
+
+  img.onerror = () => {
+    toast('이미지를 불러오지 못했습니다. URL을 확인해주세요.');
+  };
+
+  img.src = url;
+}
+
+document.getElementById('previewImg').addEventListener('dragstart', e => e.preventDefault());
+
+document.getElementById('previewImg').addEventListener('mousedown', e => {
+  if (e.button !== 0 || !activeIndex) return;
+
+  const img = document.getElementById('previewImg');
+  imgRect = img.getBoundingClientRect();
+  scale = img.naturalWidth / imgRect.width;
+
+  isDragging = true;
+  startX = Math.max(0, Math.min(e.clientX - imgRect.left, imgRect.width));
+  startY = Math.max(0, Math.min(e.clientY - imgRect.top, imgRect.height));
+
+  const box = document.getElementById('selectionBox');
+  box.style.left = startX + 'px';
+  box.style.top = startY + 'px';
+  box.style.width = '0px';
+  box.style.height = '0px';
+  box.style.display = 'block';
+});
+
+document.addEventListener('mousemove', e => {
+  if (!isDragging || !imgRect) return;
+
+  const curX = Math.max(0, Math.min(e.clientX - imgRect.left, imgRect.width));
+  const curY = Math.max(0, Math.min(e.clientY - imgRect.top, imgRect.height));
+
+  const x1 = Math.min(startX, curX);
+  const y1 = Math.min(startY, curY);
+  const w = Math.abs(curX - startX);
+  const h = Math.abs(curY - startY);
+
+  const box = document.getElementById('selectionBox');
+  box.style.left = x1 + 'px';
+  box.style.top = y1 + 'px';
+  box.style.width = w + 'px';
+  box.style.height = h + 'px';
+});
+
+document.addEventListener('mouseup', e => {
+  if (!isDragging || !imgRect) return;
+  isDragging = false;
+
+  const curX = Math.max(0, Math.min(e.clientX - imgRect.left, imgRect.width));
+  const curY = Math.max(0, Math.min(e.clientY - imgRect.top, imgRect.height));
+
+  const x1 = Math.min(startX, curX);
+  const y1 = Math.min(startY, curY);
+  const x2 = Math.max(startX, curX);
+  const y2 = Math.max(startY, curY);
+
+  document.getElementById('selectionBox').style.display = 'none';
+
+  if (Math.abs(x2 - x1) < 3 || Math.abs(y2 - y1) < 3) return;
+
+  const coords = [
+    Math.round(x1 * scale),
+    Math.round(y1 * scale),
+    Math.round(x2 * scale),
+    Math.round(y2 * scale)
+  ].join(',');
+
+  const areaDiv = document.getElementById(`coordsArea_${activeIndex}`);
+  if (!areaDiv) return;
+
+  let lastRow = areaDiv.querySelector('.area-row:last-of-type');
+  if (!lastRow) {
+    addAreaRow(activeIndex);
+    lastRow = areaDiv.querySelector('.area-row:last-of-type');
+  }
+
+  const input = lastRow.querySelector('.coords-input');
+  if (input) input.value = coords;
+
+  generateHTML();
+  toast('좌표가 입력되었습니다.');
+});
+
+function switchTab(mode) {
+  const imageMode = document.getElementById('imageMode');
+  const testFrame = document.getElementById('testFrame');
+  const tabImage = document.getElementById('tabImage');
+  const tabTest = document.getElementById('tabTest');
+
+  if (mode === 'test') {
+    imageMode.style.display = 'none';
+    testFrame.style.display = 'block';
+    tabImage.classList.remove('active');
+    tabTest.classList.add('active');
+    runInlineTest();
+  } else {
+    imageMode.style.display = 'flex';
+    testFrame.style.display = 'none';
+    tabImage.classList.add('active');
+    tabTest.classList.remove('active');
+  }
+}
+
+function generateHTML() {
+  const title = document.getElementById('titleInput').value.trim() || 'HTML 안내장';
+  const maxWidth = Number(document.getElementById('maxWidthInput').value) || 900;
+  const defaultAlt = document.getElementById('altInput').value.trim() || '안내 이미지';
+
+  let bodyRows = '';
+  let maps = '';
+  let mapIndex = 1;
+
+  document.querySelectorAll('.image-block').forEach(block => {
+    const url = block.querySelector('.img-url')?.value.trim();
+    if (!url) return;
+
+    const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt;
+    const fullLinkChecked = block.querySelector('.full-link-check')?.checked;
+    const fullLink = block.querySelector('.full-link-input')?.value.trim();
+    const hasFullLink = fullLinkChecked && fullLink;
+    const useMap = !hasFullLink && block.querySelector('.map-check')?.checked;
+    const mapName = `map_${mapIndex}`;
+
+    const imgTag = `<img src="${safeAttr(url)}" alt="${safeAttr(alt)}" style="display:block;width:100%;max-width:${maxWidth}px;border:0;margin:0;padding:0;"${useMap ? ` usemap="#${mapName}"` : ''}>`;
+    const imageContent = hasFullLink
+      ? `<a href="${safeAttr(fullLink)}" target="_blank" style="display:block;margin:0;padding:0;border:0;text-decoration:none;">${imgTag}</a>`
+      : imgTag;
+
+    bodyRows += `      <tr>
+        <td style="margin:0;padding:0;font-size:0;line-height:0;">
+          ${imageContent}
+        </td>
+      </tr>
+`;
+
+    if (useMap) {
+      let areaTags = '';
+      block.querySelectorAll('.area-row').forEach(row => {
+        const coords = row.querySelector('.coords-input')?.value.trim();
+        const link = row.querySelector('.link-input')?.value.trim();
+
+        if (coords && link) {
+          areaTags += `  <area shape="rect" coords="${safeAttr(coords)}" href="${safeAttr(link)}" target="_blank" alt="">\n`;
+        }
+      });
+
+      if (areaTags) {
+        maps += `<map name="${mapName}">
+${areaTags}</map>
+
+`;
+      }
+      mapIndex += 1;
+    }
+  });
+
+  const html = `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHTML(title)}</title>
+</head>
+<body style="margin:0;padding:0;background:#ffffff;">
+  <div style="width:100%;max-width:${maxWidth}px;margin:0 auto;padding:0;">
+    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 auto;padding:0;width:100%;max-width:${maxWidth}px;">
+${bodyRows || '      <!-- 이미지 URL을 입력하면 이곳에 이미지 행이 생성됩니다. -->\n'}    </table>
+${maps}  </div>
+</body>
+</html>`;
+
+  document.getElementById('output').value = html;
+  return html;
+}
+
+function runInlineTest() {
+  const html = generateHTML();
+  const frame = document.getElementById('testFrame');
+  frame.srcdoc = html;
+}
+
+function openTestWindow() {
+  const html = generateHTML();
+  const win = window.open('', '_blank');
+  if (!win) {
+    toast('팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+async function copyCode() {
+  const html = generateHTML();
+
+  try {
+    await navigator.clipboard.writeText(html);
+    toast('HTML 코드가 복사되었습니다.');
+  } catch (e) {
+    const output = document.getElementById('output');
+    output.focus();
+    output.select();
+    document.execCommand('copy');
+    toast('HTML 코드가 복사되었습니다.');
+  }
+}
+
+function makeSafeFileName(name) {
+  let safe = (name || 'index')
+    .trim()
+    .replace(/\.html?$/i, '')
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/\s+/g, '_');
+
+  if (!safe) safe = 'index';
+  return safe + '.html';
+}
+
+function downloadFile() {
+  const html = generateHTML();
+  const rawName = document.getElementById('fileNameInput').value;
+  const fileName = makeSafeFileName(rawName);
+
+  const blob = new Blob([html], { type:'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+  toast(`${fileName} 파일로 저장했습니다.`);
+}
+</script>
+</body>
+</html>
