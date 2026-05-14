@@ -36,7 +36,7 @@
 
   .app {
     display:grid;
-    grid-template-columns:minmax(390px, 450px) 1fr;
+    grid-template-columns:minmax(390px, 460px) 1fr;
     gap:18px;
     height:100vh;
     padding:18px;
@@ -86,7 +86,7 @@
     font-weight:800;
   }
 
-  input[type="text"], input[type="number"], textarea {
+  input[type="text"], input[type="number"], textarea, select {
     width:100%;
     border:1px solid var(--line);
     border-radius:12px;
@@ -98,13 +98,13 @@
     transition:border .15s ease, box-shadow .15s ease;
   }
 
-  input:focus, textarea:focus {
+  input:focus, textarea:focus, select:focus {
     border-color:rgba(79,124,255,.75);
     box-shadow:0 0 0 4px rgba(79,124,255,.12);
   }
 
   textarea {
-    min-height:230px;
+    min-height:150px;
     resize:vertical;
     line-height:1.55;
     font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
@@ -170,6 +170,13 @@
     padding:14px 20px;
     border-bottom:1px solid var(--line);
     background:rgba(255,255,255,.62);
+  }
+
+  .box {
+    padding:14px;
+    border:1px solid var(--line);
+    border-radius:16px;
+    background:#fff;
   }
 
   .image-block {
@@ -327,6 +334,36 @@
     background:rgba(255,71,71,.15);
   }
 
+  #overlayLayer {
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    display:none;
+  }
+
+  .overlay-box {
+    position:absolute;
+    border:2px solid rgba(79,124,255,.95);
+    background:rgba(79,124,255,.18);
+    border-radius:4px;
+  }
+
+  .overlay-label {
+    position:absolute;
+    left:0;
+    top:-24px;
+    max-width:220px;
+    padding:3px 7px;
+    border-radius:999px;
+    background:rgba(31,36,48,.88);
+    color:#fff;
+    font-size:11px;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
   .placeholder {
     margin:auto;
     color:var(--muted);
@@ -369,6 +406,29 @@
     background:#fff;
   }
 
+  .check-result {
+    display:none;
+    margin-bottom:14px;
+    padding:12px 14px;
+    border:1px solid #cfd7e6;
+    border-radius:14px;
+    background:#fff;
+    font-size:13px;
+    line-height:1.65;
+  }
+
+  .check-result.good {
+    border-color:#bbf7d0;
+    background:#f0fdf4;
+    color:#166534;
+  }
+
+  .check-result.warn {
+    border-color:#fed7aa;
+    background:#fff7ed;
+    color:#9a3412;
+  }
+
   .toast {
     position:fixed;
     left:50%;
@@ -407,9 +467,11 @@
     </div>
 
     <div class="content">
+      <div id="checkResult" class="check-result"></div>
+
       <div class="field">
         <label for="titleInput">페이지 타이틀</label>
-        <input id="titleInput" type="text" placeholder="예: 유라시아 청년 아카데미 안내장" />
+        <input id="titleInput" type="text" placeholder="예: 유라시아 청년 아카데미 안내장" oninput="generateHTML()" />
       </div>
 
       <div class="field">
@@ -422,18 +484,36 @@
         <div class="grid-2">
           <div>
             <div class="mini-label">본문 최대 너비(px)</div>
-            <input id="maxWidthInput" type="number" min="320" value="900" />
+            <input id="maxWidthInput" type="number" min="320" value="900" oninput="generateHTML(); renderOverlayBoxes();" />
           </div>
           <div>
             <div class="mini-label">최종 HTML 이미지 설명</div>
-            <input id="altInput" type="text" placeholder="교육안내" value="교육안내" />
+            <input id="altInput" type="text" placeholder="교육안내" value="교육안내" oninput="generateHTML()" />
           </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>링크 열기 방식</label>
+        <select id="targetSelect" onchange="generateHTML()">
+          <option value="_blank">새 창에서 열기</option>
+          <option value="_self">현재 창에서 열기</option>
+        </select>
+        <div class="hint">다음 화면으로 자연스럽게 넘어가는 용도라면 현재 창에서 열기를 선택하시면 됩니다.</div>
+      </div>
+
+      <div class="field box">
+        <label>이미지 URL 한 번에 추가</label>
+        <textarea id="bulkUrlInput" placeholder="이미지 주소를 한 줄에 하나씩 붙여넣으세요.&#10;https://.../01.png&#10;https://.../02.png"></textarea>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn secondary small" type="button" onclick="addBulkImages()">여러 이미지 추가</button>
+          <button class="btn secondary small" type="button" onclick="document.getElementById('bulkUrlInput').value=''">비우기</button>
         </div>
       </div>
 
       <div class="btn-row" style="margin-bottom:14px;">
         <button class="btn" type="button" onclick="addImageBlock()">+ 이미지 추가</button>
-        <button class="btn secondary" type="button" onclick="generateHTML()">코드 새로고침</button>
+        <button class="btn secondary" type="button" onclick="runCheck()">저장 전 체크</button>
       </div>
 
       <div id="imgContainer"></div>
@@ -452,6 +532,8 @@
       <button class="btn" type="button" onclick="generateHTML()">HTML 코드 생성</button>
       <button class="btn secondary" type="button" onclick="copyCode()">코드 복사</button>
       <button class="btn secondary" type="button" onclick="openTestWindow()">새 창 테스트</button>
+      <button class="btn secondary" type="button" onclick="toggleOverlay()">클릭 영역 보기</button>
+      <button class="btn secondary" type="button" onclick="runCheck()">저장 전 체크</button>
       <button class="btn success" type="button" onclick="downloadFile()">HTML 파일 저장</button>
     </div>
 
@@ -465,6 +547,7 @@
         <div id="imageMode" class="preview-stage">
           <div id="previewWrapper" class="preview-wrapper">
             <img id="previewImg" alt="미리보기" draggable="false" />
+            <div id="overlayLayer"></div>
             <div id="selectionBox"></div>
           </div>
           <div id="previewPlaceholder" class="placeholder">
@@ -501,6 +584,7 @@ let startX = 0;
 let startY = 0;
 let scale = 1;
 let imgRect = null;
+let overlayVisible = false;
 
 window.addEventListener('DOMContentLoaded', () => {
   addImageBlock();
@@ -531,11 +615,60 @@ function safeAttr(value) {
     .replaceAll('>', '&gt;');
 }
 
+function normalizeCylearnUrl(value) {
+  const oldPrefixHttp = 'http://cylearncontents.s3.ap-northeast-2.amazonaws.com/';
+  const oldPrefixHttps = 'https://cylearncontents.s3.ap-northeast-2.amazonaws.com/';
+  const newPrefix = 'https://cylearn.cylearn.co.kr/s3contents/';
+
+  return String(value || '')
+    .replaceAll(oldPrefixHttp, newPrefix)
+    .replaceAll(oldPrefixHttps, newPrefix);
+}
+
+function normalizeLinkInput(input) {
+  if (!input) return;
+  const before = input.value;
+  const after = normalizeCylearnUrl(before);
+
+  if (before !== after) {
+    input.value = after;
+    toast('CY Learn 주소가 자동 변환되었습니다.');
+  }
+
+  generateHTML();
+}
+
+function normalizeImageInput(input) {
+  if (!input) return;
+  const before = input.value;
+  const after = normalizeCylearnUrl(before);
+
+  if (before !== after) {
+    input.value = after;
+    toast('CY Learn 주소가 자동 변환되었습니다.');
+  }
+
+  generateHTML();
+}
+
 function getBlock(index) {
   return document.getElementById(`imgBlock_${index}`);
 }
 
-function addImageBlock() {
+function setActiveVisual() {
+  document.querySelectorAll('.image-block').forEach(block => {
+    block.classList.toggle('active', Number(block.dataset.index) === activeIndex);
+  });
+}
+
+function renumberBlocks() {
+  document.querySelectorAll('.image-block').forEach((block, idx) => {
+    const title = block.querySelector('.image-title');
+    if (title) title.textContent = `이미지 ${idx + 1}`;
+  });
+}
+
+function addImageBlock(url = '') {
   imgCount += 1;
   areaCounts[imgCount] = 0;
 
@@ -548,6 +681,8 @@ function addImageBlock() {
     <div class="image-block-header">
       <div class="image-title">이미지 ${imgCount}</div>
       <div class="btn-row">
+        <button class="btn secondary small" type="button" onclick="moveImageBlock(${imgCount}, -1)">▲</button>
+        <button class="btn secondary small" type="button" onclick="moveImageBlock(${imgCount}, 1)">▼</button>
         <button class="btn secondary small" type="button" onclick="setActiveImage(${imgCount})">미리보기 선택</button>
         <button class="btn danger small" type="button" onclick="removeImageBlock(${imgCount})">삭제</button>
       </div>
@@ -555,8 +690,7 @@ function addImageBlock() {
 
     <div class="field">
       <label>이미지 URL</label>
-      <input class="img-url" type="text" placeholder="https://..." oninput="handleImageUrlInput(${imgCount}, this.value)" />
-      <div class="hint">GitHub에 이미지를 같이 올릴 경우 예: images/section01.png</div>
+      <input class="img-url" type="text" placeholder="https://..." value="${safeAttr(normalizeCylearnUrl(url))}" oninput="normalizeImageInput(this); handleImageUrlInput(${imgCount}, this.value)" onpaste="setTimeout(() => { normalizeImageInput(this); handleImageUrlInput(${imgCount}, this.value); }, 0)" />
     </div>
 
     <div class="field">
@@ -590,7 +724,33 @@ function addImageBlock() {
 
   activeIndex = imgCount;
   setActiveVisual();
+  renumberBlocks();
+
+  if (url) loadPreview(normalizeCylearnUrl(url));
   generateHTML();
+  return div;
+}
+
+function addBulkImages() {
+  const text = document.getElementById('bulkUrlInput').value.trim();
+  if (!text) {
+    toast('추가할 이미지 URL을 입력해주세요.');
+    return;
+  }
+
+  const urls = text
+    .split(/\n|,|\t/)
+    .map(v => normalizeCylearnUrl(v.trim()))
+    .filter(Boolean);
+
+  if (urls.length === 0) {
+    toast('추가할 이미지 URL을 찾지 못했습니다.');
+    return;
+  }
+
+  urls.forEach(url => addImageBlock(url));
+  document.getElementById('bulkUrlInput').value = '';
+  toast(`${urls.length}개의 이미지를 추가했습니다.`);
 }
 
 function removeImageBlock(index) {
@@ -605,20 +765,34 @@ function removeImageBlock(index) {
   }
 
   setActiveVisual();
+  renumberBlocks();
   generateHTML();
+  renderOverlayBoxes();
 }
 
-function setActiveVisual() {
-  document.querySelectorAll('.image-block').forEach(block => {
-    block.classList.toggle('active', Number(block.dataset.index) === activeIndex);
-  });
+function moveImageBlock(index, direction) {
+  const block = getBlock(index);
+  if (!block) return;
+
+  if (direction < 0 && block.previousElementSibling) {
+    block.parentNode.insertBefore(block, block.previousElementSibling);
+  }
+
+  if (direction > 0 && block.nextElementSibling) {
+    block.parentNode.insertBefore(block.nextElementSibling, block);
+  }
+
+  renumberBlocks();
+  generateHTML();
+  toast('이미지 순서를 변경했습니다.');
 }
 
 function handleImageUrlInput(index, url) {
   activeIndex = index;
   setActiveVisual();
-  if (url.trim()) loadPreview(url.trim());
+  if (url.trim()) loadPreview(normalizeCylearnUrl(url.trim()));
   generateHTML();
+  renderOverlayBoxes();
 }
 
 function setActiveImage(index) {
@@ -627,7 +801,7 @@ function setActiveImage(index) {
   const block = getBlock(index);
   const input = block ? block.querySelector('.img-url') : null;
   if (input && input.value.trim()) {
-    loadPreview(input.value.trim());
+    loadPreview(normalizeCylearnUrl(input.value.trim()));
   } else {
     toast('이미지 URL을 먼저 입력해주세요.');
   }
@@ -644,7 +818,6 @@ function toggleFullImageLink(index, checked) {
 
   if (field) field.style.display = checked ? 'block' : 'none';
 
-  // 전체 이미지 링크와 이미지맵은 동시에 적용하면 충돌할 수 있어 둘 중 하나만 사용하도록 처리
   if (checked) {
     if (mapCheck) mapCheck.checked = false;
     if (mapOption) mapOption.style.opacity = '0.45';
@@ -654,6 +827,7 @@ function toggleFullImageLink(index, checked) {
   }
 
   generateHTML();
+  renderOverlayBoxes();
 }
 
 function toggleMap(index, checked) {
@@ -661,7 +835,6 @@ function toggleMap(index, checked) {
   const block = getBlock(index);
   if (!area || !block) return;
 
-  // 이미지맵을 켜면 전체 이미지 클릭 모드는 자동 해제
   if (checked) {
     const fullCheck = block.querySelector('.full-link-check');
     const fullField = block.querySelector('.full-link-field');
@@ -675,6 +848,7 @@ function toggleMap(index, checked) {
   if (checked && area.children.length === 0) addAreaRow(index);
   area.style.display = checked ? 'block' : 'none';
   generateHTML();
+  renderOverlayBoxes();
 }
 
 function addAreaRow(index) {
@@ -700,11 +874,15 @@ function addAreaRow(index) {
   row.innerHTML = `
     <div class="area-top">
       <div class="area-title">링크 영역 ${areaNo}</div>
-      <button class="btn danger small" type="button" onclick="this.closest('.area-row').remove(); generateHTML();">삭제</button>
+      <button class="btn danger small" type="button" onclick="this.closest('.area-row').remove(); generateHTML(); renderOverlayBoxes();">삭제</button>
+    </div>
+    <div class="field">
+      <label>영역 이름</label>
+      <input class="area-name-input" type="text" placeholder="예: 신청하기 버튼" oninput="renderOverlayBoxes()" />
     </div>
     <div class="field">
       <label>coords</label>
-      <input class="coords-input" type="text" placeholder="x1,y1,x2,y2" oninput="generateHTML()" />
+      <input class="coords-input" type="text" placeholder="x1,y1,x2,y2" oninput="generateHTML(); renderOverlayBoxes();" />
       <div class="hint">오른쪽 이미지에서 클릭 영역을 드래그하면 자동 입력됩니다.</div>
     </div>
     <div class="field">
@@ -730,13 +908,14 @@ function loadPreview(url) {
     img.style.display = 'block';
     placeholder.style.display = 'none';
     switchTab('image');
+    renderOverlayBoxes();
   };
 
   img.onerror = () => {
     toast('이미지를 불러오지 못했습니다. URL을 확인해주세요.');
   };
 
-  img.src = url;
+  img.src = normalizeCylearnUrl(url);
 }
 
 document.getElementById('previewImg').addEventListener('dragstart', e => e.preventDefault());
@@ -814,6 +993,7 @@ document.addEventListener('mouseup', e => {
   if (input) input.value = coords;
 
   generateHTML();
+  renderOverlayBoxes();
   toast('좌표가 입력되었습니다.');
 });
 
@@ -834,87 +1014,82 @@ function switchTab(mode) {
     testFrame.style.display = 'none';
     tabImage.classList.add('active');
     tabTest.classList.remove('active');
+    renderOverlayBoxes();
   }
 }
 
-function normalizeCylearnUrl(value) {
-  const oldPrefixHttp = 'http://cylearncontents.s3.ap-northeast-2.amazonaws.com/';
-  const oldPrefixHttps = 'https://cylearncontents.s3.ap-northeast-2.amazonaws.com/';
-  const newPrefix = 'https://cylearn.cylearn.co.kr/s3contents/';
-
-  return String(value || '')
-    .replaceAll(oldPrefixHttp, newPrefix)
-    .replaceAll(oldPrefixHttps, newPrefix);
+function toggleOverlay() {
+  overlayVisible = !overlayVisible;
+  renderOverlayBoxes();
+  toast(overlayVisible ? '클릭 영역을 표시합니다.' : '클릭 영역 표시를 숨겼습니다.');
 }
 
-function normalizeLinkInput(input) {
-  if (!input) return;
-  const before = input.value;
-  const after = normalizeCylearnUrl(before);
+function parseCoords(coords) {
+  const nums = String(coords || '').split(',').map(v => Number(v.trim()));
+  if (nums.length !== 4 || nums.some(n => Number.isNaN(n))) return null;
 
-  if (before !== after) {
-    input.value = after;
-    toast('CY Learn 주소가 자동 변환되었습니다.');
-  }
-
-  generateHTML();
+  const [x1, y1, x2, y2] = nums;
+  return {
+    x: Math.min(x1, x2),
+    y: Math.min(y1, y2),
+    w: Math.abs(x2 - x1),
+    h: Math.abs(y2 - y1)
+  };
 }
 
-function normalizeAllCylearnLinks() {
-  let changedCount = 0;
+function renderOverlayBoxes() {
+  const layer = document.getElementById('overlayLayer');
+  const img = document.getElementById('previewImg');
+  layer.innerHTML = '';
 
-  document.querySelectorAll('.link-input, .full-link-input').forEach(input => {
-    const before = input.value;
-    const after = normalizeCylearnUrl(before);
-
-    if (before !== after) {
-      input.value = after;
-      changedCount += 1;
-    }
-  });
-
-  generateHTML();
-
-  if (changedCount > 0) {
-    toast(`${changedCount}개의 CY Learn 주소를 변환했습니다.`);
-  } else {
-    toast('변환할 CY Learn 주소가 없습니다.');
-  }
-}
-
-function replaceAllLinks() {
-  const oldValue = document.getElementById('oldLinkInput').value.trim();
-  const newValue = document.getElementById('newLinkInput').value.trim();
-
-  if (!oldValue || !newValue) {
-    toast('기존 주소와 새 주소를 모두 입력해주세요.');
+  if (!overlayVisible || !activeIndex || img.style.display === 'none') {
+    layer.style.display = 'none';
     return;
   }
 
-  let changedCount = 0;
+  const block = getBlock(activeIndex);
+  if (!block || !block.querySelector('.map-check')?.checked) {
+    layer.style.display = 'none';
+    return;
+  }
 
-  document.querySelectorAll('.link-input, .full-link-input').forEach(input => {
-    if (!input.value) return;
+  imgRect = img.getBoundingClientRect();
+  if (!img.naturalWidth || !imgRect.width) return;
+  const currentScale = imgRect.width / img.naturalWidth;
 
-    if (input.value.includes(oldValue)) {
-      input.value = input.value.replaceAll(oldValue, newValue);
-      changedCount += 1;
-    }
+  block.querySelectorAll('.area-row').forEach((row, idx) => {
+    const coords = row.querySelector('.coords-input')?.value.trim();
+    const name = row.querySelector('.area-name-input')?.value.trim() || `영역 ${idx + 1}`;
+    const parsed = parseCoords(coords);
+    if (!parsed) return;
+
+    const box = document.createElement('div');
+    box.className = 'overlay-box';
+    box.style.left = (parsed.x * currentScale) + 'px';
+    box.style.top = (parsed.y * currentScale) + 'px';
+    box.style.width = (parsed.w * currentScale) + 'px';
+    box.style.height = (parsed.h * currentScale) + 'px';
+
+    const label = document.createElement('div');
+    label.className = 'overlay-label';
+    label.textContent = name;
+    box.appendChild(label);
+    layer.appendChild(box);
   });
 
-  generateHTML();
+  layer.style.display = layer.children.length ? 'block' : 'none';
+}
 
-  if (changedCount > 0) {
-    toast(`${changedCount}개의 링크를 변경했습니다.`);
-  } else {
-    toast('일치하는 기존 주소가 없습니다.');
-  }
+function getTargetAttr() {
+  const target = document.getElementById('targetSelect').value || '_blank';
+  return target;
 }
 
 function generateHTML() {
   const title = document.getElementById('titleInput').value.trim() || 'HTML 안내장';
   const maxWidth = Number(document.getElementById('maxWidthInput').value) || 900;
   const defaultAlt = document.getElementById('altInput').value.trim() || '교육안내';
+  const target = getTargetAttr();
 
   let bodyRows = '';
   let maps = '';
@@ -924,7 +1099,7 @@ function generateHTML() {
     const url = normalizeCylearnUrl(block.querySelector('.img-url')?.value.trim());
     if (!url) return;
 
-    const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt || '';
+    const alt = block.querySelector('.img-alt')?.value.trim() || defaultAlt || '교육안내';
     const fullLinkChecked = block.querySelector('.full-link-check')?.checked;
     const fullLink = normalizeCylearnUrl(block.querySelector('.full-link-input')?.value.trim());
     const hasFullLink = fullLinkChecked && fullLink;
@@ -933,7 +1108,7 @@ function generateHTML() {
 
     const imgTag = `<img src="${safeAttr(url)}" alt="${safeAttr(alt)}" style="display:block;width:100%;max-width:${maxWidth}px;border:0;margin:0;padding:0;"${useMap ? ` usemap="#${mapName}"` : ''}>`;
     const imageContent = hasFullLink
-      ? `<a href="${safeAttr(fullLink)}" target="_blank" style="display:block;margin:0;padding:0;border:0;text-decoration:none;">${imgTag}</a>`
+      ? `<a href="${safeAttr(fullLink)}" target="${safeAttr(target)}" style="display:block;margin:0;padding:0;border:0;text-decoration:none;">${imgTag}</a>`
       : imgTag;
 
     bodyRows += `      <tr>
@@ -948,9 +1123,10 @@ function generateHTML() {
       block.querySelectorAll('.area-row').forEach(row => {
         const coords = row.querySelector('.coords-input')?.value.trim();
         const link = normalizeCylearnUrl(row.querySelector('.link-input')?.value.trim());
+        const name = row.querySelector('.area-name-input')?.value.trim();
 
         if (coords && link) {
-          areaTags += `  <area shape="rect" coords="${safeAttr(coords)}" href="${safeAttr(link)}" target="_blank" alt="">\n`;
+          areaTags += `  <area shape="rect" coords="${safeAttr(coords)}" href="${safeAttr(link)}" target="${safeAttr(target)}" alt="${safeAttr(name || '')}">\n`;
         }
       });
 
@@ -1016,6 +1192,79 @@ async function copyCode() {
   }
 }
 
+function runCheck() {
+  const messages = [];
+  const blocks = Array.from(document.querySelectorAll('.image-block'));
+  const filledBlocks = blocks.filter(block => block.querySelector('.img-url')?.value.trim());
+
+  if (!document.getElementById('titleInput').value.trim()) {
+    messages.push('페이지 타이틀이 비어 있습니다.');
+  }
+
+  if (filledBlocks.length === 0) {
+    messages.push('이미지 URL이 입력된 이미지가 없습니다.');
+  }
+
+  blocks.forEach((block, idx) => {
+    const no = idx + 1;
+    const url = block.querySelector('.img-url')?.value.trim();
+    if (!url) {
+      messages.push(`이미지 ${no}: 이미지 URL이 비어 있습니다.`);
+      return;
+    }
+
+    const fullChecked = block.querySelector('.full-link-check')?.checked;
+    const fullLink = block.querySelector('.full-link-input')?.value.trim();
+    const mapChecked = block.querySelector('.map-check')?.checked;
+
+    if (fullChecked && !fullLink) {
+      messages.push(`이미지 ${no}: 이미지 전체 클릭을 켰지만 이동할 링크가 비어 있습니다.`);
+    }
+
+    if (mapChecked) {
+      const rows = Array.from(block.querySelectorAll('.area-row'));
+      const validRows = rows.filter(row => row.querySelector('.coords-input')?.value.trim() || row.querySelector('.link-input')?.value.trim());
+
+      if (validRows.length === 0) {
+        messages.push(`이미지 ${no}: 특정 영역 클릭을 켰지만 지정된 링크 영역이 없습니다.`);
+      }
+
+      rows.forEach((row, areaIdx) => {
+        const coords = row.querySelector('.coords-input')?.value.trim();
+        const link = row.querySelector('.link-input')?.value.trim();
+        const parsed = parseCoords(coords);
+
+        if (coords && !parsed) {
+          messages.push(`이미지 ${no} / 링크 영역 ${areaIdx + 1}: 좌표 형식이 올바르지 않습니다.`);
+        }
+
+        if (coords && !link) {
+          messages.push(`이미지 ${no} / 링크 영역 ${areaIdx + 1}: 좌표는 있지만 링크가 없습니다.`);
+        }
+
+        if (!coords && link) {
+          messages.push(`이미지 ${no} / 링크 영역 ${areaIdx + 1}: 링크는 있지만 좌표가 없습니다.`);
+        }
+      });
+    }
+  });
+
+  const result = document.getElementById('checkResult');
+  result.style.display = 'block';
+
+  if (messages.length === 0) {
+    result.className = 'check-result good';
+    result.innerHTML = '저장 전 체크 완료: 눈에 띄는 누락 항목이 없습니다.';
+    toast('저장 전 체크 완료');
+    return true;
+  }
+
+  result.className = 'check-result warn';
+  result.innerHTML = '<b>확인 필요</b><br>' + messages.map(m => `- ${escapeHTML(m)}`).join('<br>');
+  toast('확인할 항목이 있습니다.');
+  return false;
+}
+
 function makeSafeFileName(name) {
   let safe = (name || 'index')
     .trim()
@@ -1028,6 +1277,12 @@ function makeSafeFileName(name) {
 }
 
 function downloadFile() {
+  const ok = runCheck();
+  if (!ok) {
+    const proceed = confirm('확인할 항목이 있습니다. 그래도 HTML 파일을 저장할까요?');
+    if (!proceed) return;
+  }
+
   const html = generateHTML();
   const rawName = document.getElementById('fileNameInput').value;
   const fileName = makeSafeFileName(rawName);
@@ -1045,6 +1300,10 @@ function downloadFile() {
   URL.revokeObjectURL(url);
   toast(`${fileName} 파일로 저장했습니다.`);
 }
+
+window.addEventListener('resize', () => {
+  renderOverlayBoxes();
+});
 </script>
 </body>
 </html>
